@@ -52,10 +52,10 @@
     </nav>
 
     <div class="sidebar-foot">
-      <div class="avatar">PV</div>
+      <div class="avatar" id="userInitials">PV</div>
       <div>
-        <div class="sidebar-foot-name">Priya Venkat</div>
-        <div class="sidebar-foot-sub">Standard Monthly</div>
+        <div class="sidebar-foot-name" id="userName">Priya Venkat</div>
+        <div class="sidebar-foot-sub">Member</div>
       </div>
     </div>
   </aside>
@@ -63,8 +63,8 @@
   <div class="main">
     <header class="topbar">
       <div>
-        <div class="page-title">Welcome back, Priya</div>
-        <div class="page-sub">OMR branch · Tuesday, 30 June 2026</div>
+        <div class="page-title" id="welcomeTitle">Welcome back, Priya</div>
+        <div class="page-sub" id="todayDate">OMR branch</div>
       </div>
       <div class="topbar-actions">
         <button class="btn btn-ghost btn-sm">Show QR check-in</button>
@@ -159,6 +159,28 @@
 </div>
 
 <script>
+  // ---- Load real user from localStorage ----
+  const API = 'http://localhost:4000/api';
+  const token = localStorage.getItem('ironlog_token');
+  const user  = JSON.parse(localStorage.getItem('ironlog_user') || '{}');
+
+  // Redirect to login if not logged in
+  if (!token || !user.id) {
+    window.location.href = 'login.html';
+  }
+
+  // Populate name elements
+  if (user.name) {
+    const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('userInitials').textContent  = initials;
+    document.getElementById('userName').textContent      = user.name;
+    document.getElementById('welcomeTitle').textContent  = 'Welcome back, ' + user.name.split(' ')[0];
+  }
+
+  // Today's date
+  const today = new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('todayDate').textContent = today;
+
   new Chart(document.getElementById('weightChart'), {
     type: 'line',
     data: {

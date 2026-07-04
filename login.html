@@ -62,13 +62,13 @@
       <form id="loginForm">
         <div class="field">
           <label>Email</label>
-          <input type="email" placeholder="you@ironlog.gym" required>
+          <input type="email" id="loginEmail" placeholder="you@ironlog.gym" required>
         </div>
         <div class="field" style="margin-bottom:22px;">
           <label>Password</label>
-          <input type="password" placeholder="••••••••" required>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;">Sign in</button>
+        <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;">Sign in</button>
       </form>
 
       <div class="auth-foot">No account? <a id="showRegister">Register a membership</a></div>
@@ -105,7 +105,7 @@
             <option value="3">Velachery</option>
           </select>
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;">Create account</button>
+        <button type="submit" id="registerBtn" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;">Create account</button>
       </form>
 
       <div class="auth-foot">Already have an account? <a id="showSignin">Sign in</a></div>
@@ -115,7 +115,31 @@
 
 
 <script>
-  
+  const API = 'http://localhost:4000/api';
+
+  // ---- helpers ----
+  function showError(formId, msg) {
+    let el = document.getElementById(formId + '_err');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = formId + '_err';
+      el.style.cssText = 'background:rgba(255,77,77,0.12);color:#FF4D4D;border:1px solid rgba(255,77,77,0.3);border-radius:8px;padding:10px 13px;font-size:13px;margin-bottom:14px;';
+      document.getElementById(formId).prepend(el);
+    }
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError(formId) {
+    const el = document.getElementById(formId + '_err');
+    if (el) el.style.display = 'none';
+  }
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.textContent = loading ? 'Please wait…' : btn.dataset.label;
+  }
+
+  // ---- Sign in <-> Register toggle ----
   const signinPanel = document.getElementById('signinPanel');
   const registerPanel = document.getElementById('registerPanel');
 
@@ -128,32 +152,93 @@
     signinPanel.classList.remove('hidden');
   });
 
- 
-  let selectedRole = 'member.html';
+  // ---- Role selector (sign in) ----
   document.querySelectorAll('.role-opt').forEach(el=>{
     el.addEventListener('click', ()=>{
       document.querySelectorAll('.role-opt').forEach(o=>o.classList.remove('selected'));
       el.classList.add('selected');
-      selectedRole = el.dataset.role;
     });
   });
 
-  document.getElementById('loginForm').addEventListener('submit', e=>{
+  // store label on buttons for loading reset
+  document.getElementById('loginBtn').dataset.label   = 'Sign in';
+  document.getElementById('registerBtn').dataset.label = 'Create account';
+
+  // ---- SIGN IN ----
+  document.getElementById('loginForm').addEventListener('submit', async e=>{
     e.preventDefault();
-    window.location.href = selectedRole;
+    hideError('loginForm');
+    setLoading('loginBtn', true);
+
+    const email    = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+      const res  = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError('loginForm', data.error || 'Login failed');
+        return;
+      }
+
+      // Save token and user info for dashboards to use
+      localStorage.setItem('ironlog_token', data.token);
+      localStorage.setItem('ironlog_user',  JSON.stringify(data.user));
+
+      // Route by role returned from API (not the picker)
+      const roleMap = { admin: 'admin.html', trainer: 'trainer.html', member: 'member.html' };
+      window.location.href = roleMap[data.user.role] || 'member.html';
+
+    } catch {
+      showError('loginForm', 'Cannot reach the server — make sure the API is running on port 4000');
+    } finally {
+      setLoading('loginBtn', false);
+    }
   });
 
-  document.getElementById('registerForm').addEventListener('submit', e=>{
+  // ---- REGISTER ----
+  document.getElementById('registerForm').addEventListener('submit', async e=>{
     e.preventDefault();
+    hideError('registerForm');
+    setLoading('registerBtn', true);
+
     const payload = {
-      name: document.getElementById('regName').value,
-      email: document.getElementById('regEmail').value,
-      phone: document.getElementById('regPhone').value,
-      password: document.getElementById('regPassword').value,
+      name:      document.getElementById('regName').value.trim(),
+      email:     document.getElementById('regEmail').value.trim(),
+      phone:     document.getElementById('regPhone').value.trim() || null,
+      password:  document.getElementById('regPassword').value,
       branch_id: document.getElementById('regBranch').value || null
     };
-    console.log('Register payload', payload);
-    window.location.href = 'member.html';
+
+    try {
+      const res  = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError('registerForm', data.error || 'Registration failed');
+        return;
+      }
+
+      localStorage.setItem('ironlog_token', data.token);
+      localStorage.setItem('ironlog_user',  JSON.stringify(data.user));
+
+      // New registrations are always members
+      window.location.href = 'member.html';
+
+    } catch {
+      showError('registerForm', 'Cannot reach the server — make sure the API is running on port 4000');
+    } finally {
+      setLoading('registerBtn', false);
+    }
   });
 </script>
 </body>

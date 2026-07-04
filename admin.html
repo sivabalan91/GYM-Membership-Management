@@ -57,9 +57,9 @@
     </nav>
 
     <div class="sidebar-foot">
-      <div class="avatar">RM</div>
+      <div class="avatar" id="userInitials">RM</div>
       <div>
-        <div class="sidebar-foot-name">Riya Mehta</div>
+        <div class="sidebar-foot-name" id="userName">Riya Mehta</div>
         <div class="sidebar-foot-sub">Super Admin</div>
       </div>
     </div>
@@ -206,6 +206,16 @@
 </div>
 
 <script>
+  // ---- Load real user ----
+  const token = localStorage.getItem('ironlog_token');
+  const user  = JSON.parse(localStorage.getItem('ironlog_user') || '{}');
+  if (!token || user.role !== 'admin') window.location.href = 'login.html';
+  if (user.name) {
+    const initials = user.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('userInitials').textContent = initials;
+    document.getElementById('userName').textContent     = user.name;
+  }
+
   const ctx = document.getElementById('revenueChart');
   new Chart(ctx, {
     type: 'bar',

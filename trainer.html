@@ -46,9 +46,9 @@
     </nav>
 
     <div class="sidebar-foot">
-      <div class="avatar">SK</div>
+      <div class="avatar" id="userInitials">SK</div>
       <div>
-        <div class="sidebar-foot-name">Suresh Kumar</div>
+        <div class="sidebar-foot-name" id="userName">Suresh Kumar</div>
         <div class="sidebar-foot-sub">Strength &amp; Conditioning</div>
       </div>
     </div>
@@ -171,5 +171,15 @@
     </div>
   </div>
 </div>
+<script>
+  const token = localStorage.getItem('ironlog_token');
+  const user  = JSON.parse(localStorage.getItem('ironlog_user') || '{}');
+  if (!token || user.role !== 'trainer') window.location.href = 'login.html';
+  if (user.name) {
+    const initials = user.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('userInitials').textContent = initials;
+    document.getElementById('userName').textContent     = user.name;
+  }
+</script>
 </body>
 </html>
