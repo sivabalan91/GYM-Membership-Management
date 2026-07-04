@@ -1,0 +1,160 @@
+/* ---- Filter bar ---- */
+  .filter-bar{
+    display:flex; align-items:center; gap:12px;
+    margin-bottom:22px; flex-wrap:wrap;
+  }
+  .filter-bar input, .filter-bar select{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:9px 13px;
+    color:var(--text);
+    font-size:13px;
+    outline:none;
+  }
+  .filter-bar input:focus, .filter-bar select:focus{ border-color:var(--orange); }
+  .filter-bar input[type="date"]{ color-scheme:dark; }
+
+  /* ---- Class cards grid ---- */
+  .classes-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+    gap:16px;
+  }
+
+  .class-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    transition:border-color .2s;
+  }
+  .class-card:hover{ border-color:var(--text-dim); }
+
+  .class-card-top{
+    padding:18px 18px 14px;
+    border-bottom:1px solid var(--border);
+    position:relative;
+  }
+  .class-type-tag{
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--orange);
+    margin-bottom:6px;
+  }
+  .class-name{
+    font-family:var(--font-display);
+    font-size:18px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    margin-bottom:4px;
+  }
+  .class-trainer{
+    font-size:12.5px;
+    color:var(--text-dim);
+  }
+  .class-capacity-bar{
+    margin-top:12px;
+    height:4px;
+    background:var(--surface-2);
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .class-capacity-fill{
+    height:100%;
+    border-radius:2px;
+    background:var(--lime);
+    transition:width .3s;
+  }
+  .class-capacity-fill.warn{ background:var(--orange); }
+  .class-capacity-fill.full{ background:var(--red); }
+
+  .class-card-body{
+    padding:14px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    flex:1;
+  }
+  .class-meta{
+    display:flex; align-items:center; gap:8px;
+    font-size:13px; color:var(--text-dim);
+  }
+  .class-meta svg{ width:14px; height:14px; flex-shrink:0; }
+
+  .class-card-foot{
+    padding:14px 18px;
+    border-top:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .spots-left{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-dim);
+  }
+  .spots-left.urgent{ color:var(--red); font-weight:700; }
+
+  /* ---- My Bookings panel ---- */
+  .booking-row{
+    display:flex; align-items:center;
+    justify-content:space-between;
+    padding:12px 0;
+    border-bottom:1px solid var(--border);
+    gap:12px;
+  }
+  .booking-row:last-child{ border-bottom:none; }
+  .booking-info{ flex:1; }
+  .booking-name{ font-size:14px; font-weight:600; }
+  .booking-meta{ font-size:12px; color:var(--text-dim); margin-top:3px; }
+
+  /* ---- Toast notification ---- */
+  .toast{
+    position:fixed; bottom:24px; right:24px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 18px;
+    font-size:13.5px;
+    font-weight:500;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    transform:translateY(80px);
+    opacity:0;
+    transition:all .3s;
+    z-index:999;
+    max-width:320px;
+  }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast.success{ border-color:var(--lime); }
+  .toast.error{ border-color:var(--red); }
+  .toast-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--lime); }
+  .toast.error .toast-dot{ background:var(--red); }
+
+  /* ---- Empty state ---- */
+  .empty{
+    text-align:center; padding:60px 20px;
+    color:var(--text-dim); font-size:14px;
+  }
+  .empty-icon{ font-size:40px; margin-bottom:12px; }
+
+  /* ---- Loading skeleton ---- */
+  .skeleton{
+    background:linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.4s infinite;
+    border-radius:6px;
+    height:16px;
+  }
+  @keyframes shimmer{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  @media(max-width:600px){
+    .filter-bar{ flex-direction:column; align-items:stretch; }
+    .classes-grid{ grid-template-columns:1fr; }
+  }

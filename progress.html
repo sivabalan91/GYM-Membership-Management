@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRONLOG — Progress</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  /* ---- Log form card ---- */
+  .log-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px;
+    margin-bottom:20px;
+  }
+  .log-inputs{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:14px;
+    margin-bottom:16px;
+  }
+  .metric-input{ display:flex; flex-direction:column; gap:6px; }
+  .metric-input label{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  .metric-input input{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:11px 13px;
+    color:var(--text);
+    font-size:15px;
+    font-family:var(--font-mono);
+    font-weight:700;
+    outline:none;
+    transition:border-color .15s;
+    width:100%;
+  }
+  .metric-input input:focus{ border-color:var(--orange); }
+  .metric-input .unit{
+    font-size:11px;
+    color:var(--text-dim);
+    text-align:right;
+    margin-top:2px;
+  }
+
+  /* ---- Stat summary row ---- */
+  .summary-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .summary-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .summary-card::before{
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--accent, var(--orange));
+  }
+  .summary-label{
+    font-family:var(--font-mono);
+    font-size:10px; letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--text-dim); margin-bottom:8px;
+  }
+  .summary-value{
+    font-family:var(--font-mono);
+    font-size:26px; font-weight:700; line-height:1;
+  }
+  .summary-change{
+    margin-top:6px; font-size:12px; font-weight:600;
+  }
+  .summary-change.good{ color:var(--lime); }
+  .summary-change.bad{ color:var(--red); }
+  .summary-change.neutral{ color:var(--text-dim); }
+
+  /* ---- Chart panels ---- */
+  .charts-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+    margin-bottom:20px;
+  }
+
+  /* ---- History table ---- */
+  .history-panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+  .history-panel .panel-head{ padding:18px 20px 0; }
+
+  /* ---- BMI scale ---- */
+  .bmi-scale{
+    height:10px;
+    border-radius:5px;
+    background:linear-gradient(to right, #4FC3F7 0%, #81C784 18.5%, #81C784 25%, #FFB74D 30%, #FF7043 35%, #E53935 100%);
+    position:relative;
+    margin:10px 0 4px;
+  }
+  .bmi-marker{
+    position:absolute;
+    top:-4px; width:18px; height:18px;
+    background:var(--text); border-radius:50%;
+    transform:translateX(-50%);
+    border:2px solid var(--bg);
+    transition:left .5s;
+  }
+  .bmi-labels{
+    display:flex; justify-content:space-between;
+    font-family:var(--font-mono); font-size:9.5px;
+    color:var(--text-dim); margin-top:2px;
+  }
+
+  /* ---- Toast ---- */
+  .toast{
+    position:fixed; bottom:24px; right:24px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:14px 18px;
+    font-size:13.5px; font-weight:500;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    transform:translateY(80px); opacity:0;
+    transition:all .3s; z-index:999;
+  }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast.success{ border-color:var(--lime); }
+  .toast.error{ border-color:var(--red); }
+  .toast-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--lime); }
+  .toast.error .toast-dot{ background:var(--red); }
+
+  .empty{ text-align:center; padding:40px 20px; color:var(--text-dim); font-size:13.5px; }
+
+  @media(max-width:760px){
+    .charts-grid{ grid-template-columns:1fr; }
+    .summary-row{ grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">IRON<span>LOG</span></div>
+    </div>
+    <div class="role-tag"><span class="role-dot"></span>Member Area</div>
+    <nav class="nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item" href="member.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+      </a>
+      <div class="nav-section-label">Train</div>
+      <a class="nav-item" href="classes.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Book a Class
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18v4h12v-4"/><rect x="6" y="9" width="12" height="9" rx="1"/></svg>
+        Workout Plan
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Nutrition Plan
+      </a>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        Progress
+      </a>
+      <div class="nav-section-label">Account</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Billing &amp; Plan
+      </a>
+      <a class="nav-item" href="login.html" id="logoutBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="avatar" id="userInitials">--</div>
+      <div>
+        <div class="sidebar-foot-name" id="userName">Loading…</div>
+        <div class="sidebar-foot-sub">Member</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="page-title">Progress Tracker</div>
+        <div class="page-sub" id="pageDate">Log your metrics and watch your progress</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="loadHistory()">↻ Refresh</button>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('logSection').scrollIntoView({behavior:'smooth'})">+ Log today</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- Summary cards -->
+      <div class="summary-row" id="summaryRow">
+        <div class="summary-card" style="--accent:var(--orange)">
+          <div class="summary-label">Current Weight</div>
+          <div class="summary-value" id="curWeight">—</div>
+          <div class="summary-change neutral" id="weightChange">No logs yet</div>
+        </div>
+        <div class="summary-card" style="--accent:var(--lime)">
+          <div class="summary-label">BMI</div>
+          <div class="summary-value" id="curBmi">—</div>
+          <div class="summary-change neutral" id="bmiLabel">No logs yet</div>
+        </div>
+        <div class="summary-card" style="--accent:#7C9CFF">
+          <div class="summary-label">Body Fat %</div>
+          <div class="summary-value" id="curFat">—</div>
+          <div class="summary-change neutral" id="fatChange">No logs yet</div>
+        </div>
+        <div class="summary-card" style="--accent:#C084FC">
+          <div class="summary-label">Total Logs</div>
+          <div class="summary-value" id="totalLogs">0</div>
+          <div class="summary-change neutral" id="firstLog">Start logging!</div>
+        </div>
+      </div>
+
+      <!-- BMI visual scale -->
+      <div class="panel" style="margin-bottom:18px;" id="bmiScalePanel">
+        <div class="panel-head">
+          <div class="panel-title">BMI Scale</div>
+          <span class="pill pill-grey" id="bmiCategory">—</span>
+        </div>
+        <div class="bmi-scale">
+          <div class="bmi-marker" id="bmiMarker" style="left:0%"></div>
+        </div>
+        <div class="bmi-labels">
+          <span>Under (16)</span>
+          <span>Normal (18.5–25)</span>
+          <span>Overweight (30)</span>
+          <span>Obese (40+)</span>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Weight (kg)</div>
+            <span class="pill pill-grey" id="weightEntries">0 entries</span>
+          </div>
+          <canvas id="weightChart" height="200"></canvas>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Body Fat %</div>
+            <span class="pill pill-grey" id="fatEntries">0 entries</span>
+          </div>
+          <canvas id="fatChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- Log form -->
+      <div class="log-card" id="logSection">
+        <div class="panel-head" style="margin-bottom:16px;">
+          <div class="panel-title">Log Today's Metrics</div>
+          <span class="pill pill-orange">New entry</span>
+        </div>
+        <div class="log-inputs">
+          <div class="metric-input">
+            <label>Weight</label>
+            <input type="number" id="inWeight" placeholder="70.5" step="0.1" min="20" max="300">
+            <div class="unit">kilograms (kg)</div>
+          </div>
+          <div class="metric-input">
+            <label>Body Fat %</label>
+            <input type="number" id="inFat" placeholder="18.5" step="0.1" min="1" max="70">
+            <div class="unit">percentage (%)</div>
+          </div>
+          <div class="metric-input">
+            <label>BMI</label>
+            <input type="number" id="inBmi" placeholder="22.4" step="0.1" min="10" max="60">
+            <div class="unit">auto-calc or manual</div>
+          </div>
+          <div class="metric-input" style="grid-column:1/-1;">
+            <label>Height (for BMI auto-calc)</label>
+            <input type="number" id="inHeight" placeholder="175" step="1" min="100" max="250">
+            <div class="unit">centimetres — enter weight + height to auto-fill BMI</div>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:16px;">
+          <label style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:7px;">Notes (optional)</label>
+          <textarea id="inNotes" rows="2" placeholder="Feeling stronger, hit a new PR on squats…"
+            style="width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-size:14px;outline:none;resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn btn-primary" id="logBtn" onclick="logProgress()">Save entry</button>
+          <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
+          <span id="logMsg" style="font-size:12.5px;color:var(--text-dim);margin-left:4px;"></span>
+        </div>
+      </div>
+
+      <!-- History table -->
+      <div class="history-panel">
+        <div class="panel-head" style="padding:18px 20px 14px;">
+          <div class="panel-title">Log History</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadHistory()">Refresh</button>
+        </div>
+        <div style="padding:0 20px 20px;" id="historyBody">
+          <div class="empty">Loading history…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+  const API   = 'http://localhost:4000/api';
+  const token = localStorage.getItem('ironlog_token');
+  const user  = JSON.parse(localStorage.getItem('ironlog_user') || '{}');
+
+  if (!token || !user.id) window.location.href = 'login.html';
+
+  if (user.name) {
+    const initials = user.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('userInitials').textContent = initials;
+    document.getElementById('userName').textContent     = user.name;
+  }
+  document.getElementById('pageDate').textContent =
+    new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  document.getElementById('logoutBtn').addEventListener('click',()=>{ localStorage.clear(); window.location.href='login.html'; });
+
+  // ---- Toast ----
+  function showToast(msg, type='success'){
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(()=>t.classList.remove('show'), 3200);
+  }
+
+  // ---- Chart instances ----
+  let weightChart, fatChart;
+  const CHART_OPTS = (label, color) => ({
+    type:'line',
+    data:{ labels:[], datasets:[{
+      label, data:[],
+      borderColor: color,
+      backgroundColor: color.replace(')',',0.10)').replace('rgb','rgba'),
+      fill:true, tension:0.35, pointRadius:4,
+      pointBackgroundColor: color, pointBorderColor: color
+    }]},
+    options:{
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:'#9A9CA6', font:{size:11} }, grid:{ color:'#33363F' } },
+        y:{ ticks:{ color:'#9A9CA6', font:{size:11} }, grid:{ color:'#33363F' } }
+      }
+    }
+  });
+
+  function initCharts(){
+    weightChart = new Chart(document.getElementById('weightChart'), CHART_OPTS('Weight (kg)','#FF5722'));
+    fatChart    = new Chart(document.getElementById('fatChart'),    CHART_OPTS('Body Fat %','#7C9CFF'));
+  }
+
+  function updateCharts(logs){
+    const labels = logs.map(l => new Date(l.logged_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+
+    const weights = logs.map(l => l.weight_kg);
+    weightChart.data.labels   = labels;
+    weightChart.data.datasets[0].data = weights;
+    weightChart.update();
+    document.getElementById('weightEntries').textContent = `${logs.filter(l=>l.weight_kg).length} entries`;
+
+    const fats = logs.map(l => l.body_fat_pct);
+    fatChart.data.labels   = labels;
+    fatChart.data.datasets[0].data = fats;
+    fatChart.update();
+    document.getElementById('fatEntries').textContent = `${logs.filter(l=>l.body_fat_pct).length} entries`;
+  }
+
+  // ---- BMI helpers ----
+  function bmiCategory(bmi){
+    if (bmi < 18.5) return { label:'Underweight', cls:'pill-grey' };
+    if (bmi < 25)   return { label:'Normal',       cls:'pill-green' };
+    if (bmi < 30)   return { label:'Overweight',   cls:'pill-orange' };
+    return              { label:'Obese',           cls:'pill-red' };
+  }
+  function bmiPercent(bmi){
+    // Map BMI 16–40 to 0–100% for the scale
+    return Math.min(100, Math.max(0, ((bmi - 16) / 24) * 100));
+  }
+
+  function updateBmiScale(bmi){
+    if (!bmi) return;
+    const pct = bmiPercent(bmi);
+    document.getElementById('bmiMarker').style.left = pct + '%';
+    const cat = bmiCategory(bmi);
+    const pill = document.getElementById('bmiCategory');
+    pill.textContent = cat.label;
+    pill.className = `pill ${cat.cls}`;
+  }
+
+  // ---- Summary cards ----
+  function updateSummary(logs){
+    if (!logs.length) return;
+    const latest = logs[logs.length - 1];
+    const prev   = logs.length > 1 ? logs[logs.length - 2] : null;
+
+    // Weight
+    if (latest.weight_kg) {
+      document.getElementById('curWeight').textContent = latest.weight_kg + ' kg';
+      if (prev?.weight_kg) {
+        const diff = (latest.weight_kg - prev.weight_kg).toFixed(1);
+        const el   = document.getElementById('weightChange');
+        el.textContent = (diff > 0 ? '▲ +' : '▼ ') + diff + ' kg since last log';
+        el.className   = 'summary-change ' + (diff > 0 ? 'bad' : 'good');
+      } else {
+        document.getElementById('weightChange').textContent = 'First log recorded';
+      }
+    }
+
+    // BMI
+    if (latest.bmi) {
+      document.getElementById('curBmi').textContent = latest.bmi;
+      const cat = bmiCategory(latest.bmi);
+      const el  = document.getElementById('bmiLabel');
+      el.textContent = cat.label;
+      el.className   = 'summary-change ' + (cat.label === 'Normal' ? 'good' : 'bad');
+      updateBmiScale(latest.bmi);
+    }
+
+    // Body fat
+    if (latest.body_fat_pct) {
+      document.getElementById('curFat').textContent = latest.body_fat_pct + '%';
+      if (prev?.body_fat_pct) {
+        const diff = (latest.body_fat_pct - prev.body_fat_pct).toFixed(1);
+        const el   = document.getElementById('fatChange');
+        el.textContent = (diff > 0 ? '▲ +' : '▼ ') + diff + '% since last log';
+        el.className   = 'summary-change ' + (diff > 0 ? 'bad' : 'good');
+      }
+    }
+
+    // Total logs
+    document.getElementById('totalLogs').textContent = logs.length;
+    document.getElementById('firstLog').textContent  =
+      'Since ' + new Date(logs[0].logged_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  }
+
+  // ---- Load history ----
+  async function loadHistory(){
+    const body = document.getElementById('historyBody');
+    body.innerHTML = '<div class="empty">Loading…</div>';
+
+    try {
+      const res  = await fetch(`${API}/progress/member/${user.id}`, {
+        headers:{ Authorization:`Bearer ${token}` }
+      });
+      const logs = await res.json();
+
+      if (!logs.length){
+        body.innerHTML = '<div class="empty">No logs yet — add your first entry below!</div>';
+        return;
+      }
+
+      updateSummary(logs);
+      updateCharts(logs);
+
+      const rows = [...logs].reverse().map(l => `
+        <tr>
+          <td class="mono">${new Date(l.logged_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+          <td class="mono">${l.weight_kg ? l.weight_kg + ' kg' : '—'}</td>
+          <td class="mono">${l.bmi || '—'}</td>
+          <td class="mono">${l.body_fat_pct ? l.body_fat_pct + '%' : '—'}</td>
+          <td style="font-size:12.5px;color:var(--text-dim);">${l.notes || '—'}</td>
+        </tr>`).join('');
+
+      body.innerHTML = `
+        <table>
+          <thead><tr><th>Date</th><th>Weight</th><th>BMI</th><th>Body Fat</th><th>Notes</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+
+    } catch(err){
+      body.innerHTML = `<div class="empty">Could not load history — make sure the API is running.<br><small>${err.message}</small></div>`;
+    }
+  }
+
+  // ---- Auto-calc BMI when weight + height are filled ----
+  function autoCalcBmi(){
+    const w = parseFloat(document.getElementById('inWeight').value);
+    const h = parseFloat(document.getElementById('inHeight').value);
+    if (w > 0 && h > 0){
+      const bmi = (w / ((h/100) ** 2)).toFixed(1);
+      document.getElementById('inBmi').value = bmi;
+    }
+  }
+  document.getElementById('inWeight').addEventListener('input', autoCalcBmi);
+  document.getElementById('inHeight').addEventListener('input', autoCalcBmi);
+
+  // ---- Log progress ----
+  async function logProgress(){
+    const weight    = parseFloat(document.getElementById('inWeight').value) || null;
+    const fat       = parseFloat(document.getElementById('inFat').value)    || null;
+    const bmi       = parseFloat(document.getElementById('inBmi').value)    || null;
+    const notes     = document.getElementById('inNotes').value.trim()       || null;
+
+    if (!weight && !fat && !bmi){
+      showToast('Enter at least one metric to log.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('logBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+      const res  = await fetch(`${API}/progress`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ member_id:user.id, weight_kg:weight, body_fat_pct:fat, bmi, notes })
+      });
+      const data = await res.json();
+
+      if (!res.ok){
+        showToast(data.error || 'Could not save entry.', 'error');
+        return;
+      }
+
+      showToast('✅ Progress logged!', 'success');
+      clearForm();
+      loadHistory();
+
+    } catch(err){
+      showToast('Cannot reach server — is the API running?', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save entry';
+    }
+  }
+
+  function clearForm(){
+    ['inWeight','inFat','inBmi','inHeight','inNotes'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('logMsg').textContent = '';
+  }
+
+  // ---- Boot ----
+  initCharts();
+  loadHistory();
+</script>
+</body>
+</html>
