@@ -115,7 +115,7 @@
 
 
 <script>
-  // ---- Sign in <-> Register toggle ----
+  
   const signinPanel = document.getElementById('signinPanel');
   const registerPanel = document.getElementById('registerPanel');
 
@@ -128,7 +128,7 @@
     signinPanel.classList.remove('hidden');
   });
 
-  // ---- Role selector (sign in) ----
+ 
   let selectedRole = 'member.html';
   document.querySelectorAll('.role-opt').forEach(el=>{
     el.addEventListener('click', ()=>{
@@ -140,12 +140,9 @@
 
   document.getElementById('loginForm').addEventListener('submit', e=>{
     e.preventDefault();
-    // TODO: replace with a real call to POST /api/auth/login, then route
-    // based on the role returned in the response rather than the picker.
     window.location.href = selectedRole;
   });
 
-  // ---- Register submit ----
   document.getElementById('registerForm').addEventListener('submit', e=>{
     e.preventDefault();
     const payload = {
@@ -155,10 +152,6 @@
       password: document.getElementById('regPassword').value,
       branch_id: document.getElementById('regBranch').value || null
     };
-    // TODO: replace with a real call to POST /api/auth/register:
-    // fetch('http://localhost:4000/api/auth/register', {
-    //   method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-    // }).then(...)
     console.log('Register payload', payload);
     window.location.href = 'member.html';
   });
